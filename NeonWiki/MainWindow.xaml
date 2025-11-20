@@ -96,11 +96,30 @@
                             BorderBrush="#00FFFF"
                             BorderThickness="0,0,0,1"
                             Padding="15,10">
-                        <TextBlock Text="📁 WIKI FILES"
-                                   FontFamily="Consolas"
-                                   FontSize="14"
-                                   FontWeight="Bold"
-                                   Foreground="#00FFFF"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Grid.Column="0"
+                                       Text="📁 WIKI FILES"
+                                       FontFamily="Consolas"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="#00FFFF"
+                                       VerticalAlignment="Center"/>
+                            
+                            <Button Grid.Column="1"
+                                    Content="🔄"
+                                    Style="{StaticResource NeonButtonStyle}"
+                                    Width="30"
+                                    Height="30"
+                                    Padding="0"
+                                    Click="RefreshTreeView_Click"
+                                    ToolTip="Actualizar árbol de directorios (F5)"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
                     </Border>
 
                     <!-- TreeView -->
