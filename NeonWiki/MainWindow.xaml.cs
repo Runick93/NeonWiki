@@ -11,6 +11,7 @@ using System.Windows.Media;
 using Markdig;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
+using Microsoft.Win32;
 
 namespace NeonWiki
 {
@@ -79,6 +80,99 @@ namespace NeonWiki
                 _currentWikiPath = dialog.SelectedPath;
                 LoadWikiStructure();
                 StatusBar.Text = $"📁 Loaded: {Path.GetFileName(_currentWikiPath)}";
+            }
+        }
+
+        private void NewFile_Click(object sender, RoutedEventArgs e)
+        {
+            // Verificar si hay una carpeta de wiki seleccionada
+            if (string.IsNullOrEmpty(_currentWikiPath) || !Directory.Exists(_currentWikiPath))
+            {
+                MessageBox.Show(
+                    "Por favor, selecciona primero una carpeta de wiki.",
+                    "Carpeta no seleccionada",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // Determinar la carpeta donde crear el archivo
+            string targetFolder = _currentWikiPath;
+            
+            // Si hay un elemento seleccionado en el TreeView, usar su carpeta
+            if (TreeViewFiles.SelectedItem is TreeViewItem selectedItem)
+            {
+                if (selectedItem.Tag is string selectedPath)
+                {
+                    if (Directory.Exists(selectedPath))
+                    {
+                        targetFolder = selectedPath;
+                    }
+                    else if (File.Exists(selectedPath))
+                    {
+                        targetFolder = Path.GetDirectoryName(selectedPath) ?? _currentWikiPath;
+                    }
+                }
+            }
+
+            // Mostrar diálogo para elegir el nombre del archivo
+            var saveDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Crear nuevo archivo Markdown",
+                Filter = "Archivos Markdown (*.md)|*.md|Todos los archivos (*.*)|*.*",
+                InitialDirectory = targetFolder,
+                FileName = "nuevo_archivo.md",
+                DefaultExt = "md"
+            };
+
+            if (saveDialog.ShowDialog() == true)
+            {
+                try
+                {
+                    string filePath = saveDialog.FileName;
+                    
+                    // Asegurar que el archivo tenga extensión .md
+                    if (!filePath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filePath += ".md";
+                    }
+
+                    // Verificar si el archivo ya existe
+                    if (File.Exists(filePath))
+                    {
+                        var result = MessageBox.Show(
+                            $"El archivo {Path.GetFileName(filePath)} ya existe. ¿Deseas sobrescribirlo?",
+                            "Archivo existente",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+
+                        if (result == MessageBoxResult.No)
+                        {
+                            return;
+                        }
+                    }
+
+                    // Crear el archivo vacío o con contenido inicial
+                    string initialContent = $"# {Path.GetFileNameWithoutExtension(filePath)}\n\n";
+                    File.WriteAllText(filePath, initialContent, Encoding.UTF8);
+
+                    // Actualizar el TreeView
+                    LoadWikiStructure();
+
+                    // Abrir el archivo en una nueva pestaña
+                    OpenFileInTab(filePath);
+
+                    StatusBar.Text = $"✅ Creado: {Path.GetFileName(filePath)}";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(
+                        $"Error al crear el archivo:\n{ex.Message}",
+                        "Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    StatusBar.Text = $"❌ Error: {ex.Message}";
+                }
             }
         }
 

@@ -52,6 +52,11 @@
                             Click="SelectFolder_Click"
                             Margin="0,0,10,0"/>
                     
+                    <Button Content="➕ New File" 
+                            Style="{StaticResource NeonButtonStyle}"
+                            Click="NewFile_Click"
+                            Margin="0,0,10,0"/>
+                    
                     <Button Content="💾 Save (Ctrl+S)" 
                             Style="{StaticResource NeonButtonStyle}"
                             Click="SaveCurrent_Click"

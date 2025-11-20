@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NeonWiki")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ad6ff1eaf9a4c394982d53ac16e184e398715c4b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e42c26ae7cedc24d03298c7f1e5d7fb5681a0a3")]
 [assembly: System.Reflection.AssemblyProductAttribute("NeonWiki")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NeonWiki")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
