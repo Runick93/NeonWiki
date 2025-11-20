@@ -156,8 +156,8 @@ namespace NeonWiki
                     string initialContent = $"# {Path.GetFileNameWithoutExtension(filePath)}\n\n";
                     File.WriteAllText(filePath, initialContent, Encoding.UTF8);
 
-                    // Actualizar el TreeView
-                    LoadWikiStructure();
+                    // Actualizar el TreeView preservando el estado
+                    RefreshWikiStructure();
 
                     // Abrir el archivo en una nueva pestaña
                     OpenFileInTab(filePath);
@@ -192,6 +192,111 @@ namespace NeonWiki
 
             LoadDirectory(rootItem, _currentWikiPath);
             TreeViewFiles.Items.Add(rootItem);
+        }
+
+        private void RefreshTreeView_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshWikiStructure();
+        }
+
+        private void RefreshWikiStructure()
+        {
+            if (string.IsNullOrEmpty(_currentWikiPath) || !Directory.Exists(_currentWikiPath))
+            {
+                StatusBar.Text = "❌ No hay carpeta de wiki seleccionada";
+                return;
+            }
+
+            try
+            {
+                // Guardar el elemento seleccionado actualmente (si existe)
+                TreeViewItem? selectedItem = TreeViewFiles.SelectedItem as TreeViewItem;
+                string? selectedPath = null;
+                if (selectedItem?.Tag is string path)
+                {
+                    selectedPath = path;
+                }
+
+                // Guardar las carpetas expandidas
+                var expandedPaths = new HashSet<string>();
+                SaveExpandedPaths(TreeViewFiles.Items, expandedPaths);
+
+                // Recargar la estructura
+                LoadWikiStructure();
+
+                // Restaurar las carpetas expandidas
+                RestoreExpandedPaths(TreeViewFiles.Items, expandedPaths);
+
+                // Intentar restaurar la selección anterior
+                if (!string.IsNullOrEmpty(selectedPath))
+                {
+                    RestoreTreeViewSelection(selectedPath);
+                }
+
+                StatusBar.Text = $"🔄 Árbol actualizado: {Path.GetFileName(_currentWikiPath)}";
+            }
+            catch (Exception ex)
+            {
+                StatusBar.Text = $"❌ Error al actualizar: {ex.Message}";
+            }
+        }
+
+        private void SaveExpandedPaths(ItemCollection items, HashSet<string> expandedPaths)
+        {
+            foreach (TreeViewItem item in items)
+            {
+                if (item.Tag is string path && item.IsExpanded && Directory.Exists(path))
+                {
+                    expandedPaths.Add(path);
+                }
+                SaveExpandedPaths(item.Items, expandedPaths);
+            }
+        }
+
+        private void RestoreExpandedPaths(ItemCollection items, HashSet<string> expandedPaths)
+        {
+            foreach (TreeViewItem item in items)
+            {
+                if (item.Tag is string path && expandedPaths.Contains(path))
+                {
+                    item.IsExpanded = true;
+                }
+                RestoreExpandedPaths(item.Items, expandedPaths);
+            }
+        }
+
+        private void RestoreTreeViewSelection(string targetPath)
+        {
+            // Buscar el elemento en el árbol que corresponde a la ruta
+            foreach (TreeViewItem rootItem in TreeViewFiles.Items)
+            {
+                var found = FindTreeViewItemByPath(rootItem, targetPath);
+                if (found != null)
+                {
+                    found.IsSelected = true;
+                    found.BringIntoView();
+                    break;
+                }
+            }
+        }
+
+        private TreeViewItem? FindTreeViewItemByPath(TreeViewItem item, string targetPath)
+        {
+            if (item.Tag is string path && path == targetPath)
+            {
+                return item;
+            }
+
+            foreach (TreeViewItem child in item.Items)
+            {
+                var found = FindTreeViewItemByPath(child, targetPath);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         private void LoadDirectory(TreeViewItem parent, string path)
@@ -1358,6 +1463,14 @@ namespace NeonWiki
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            // Refrescar árbol de directorios (F5)
+            if (e.Key == Key.F5 && Keyboard.Modifiers == ModifierKeys.None)
+            {
+                RefreshWikiStructure();
+                e.Handled = true;
+                return;
+            }
+
             // Guardar
             if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
             {
