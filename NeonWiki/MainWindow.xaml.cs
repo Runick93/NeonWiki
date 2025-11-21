@@ -1521,7 +1521,7 @@ namespace NeonWiki
                     var currentIndex = index++;
                     var divId = $"mermaid-{currentIndex}";
                     var containerId = $"mermaid-container-{currentIndex}";
-                    return $"<div class=\"mermaid-container\" id=\"{containerId}\"><div class=\"mermaid-zoom-controls\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\">{mermaidCode}</div></div>";
+                    return $"<div class=\"mermaid-container\" id=\"{containerId}\" style=\"display: flex; flex-direction: column;\"><div class=\"mermaid-zoom-controls\" style=\"order: 1;\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\" style=\"order: 2;\">{mermaidCode}</div></div>";
                 });
             }
             
@@ -1541,7 +1541,7 @@ namespace NeonWiki
                 var currentIndex = index++;
                 var divId = $"mermaid-{currentIndex}";
                 var containerId = $"mermaid-container-{currentIndex}";
-                return $"<div class=\"mermaid-container\" id=\"{containerId}\"><div class=\"mermaid-zoom-controls\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\">{mermaidCode}</div></div>";
+                return $"<div class=\"mermaid-container\" id=\"{containerId}\" style=\"display: flex; flex-direction: column;\"><div class=\"mermaid-zoom-controls\" style=\"order: 1;\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\" style=\"order: 2;\">{mermaidCode}</div></div>";
             });
             
             return result;
@@ -1946,19 +1946,6 @@ namespace NeonWiki
             background: #00cccc;
         }}
 
-        /* Mermaid Diagram Styles */
-        .mermaid-container {{
-            position: relative;
-            margin: 20px 0;
-            background-color: #000a0a;
-            border: 1px solid #00ffff;
-            border-radius: 5px;
-            padding: 20px;
-            padding-top: 50px;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            overflow: auto;
-            min-height: 100px;
-        }}
 
         .mermaid {{
             text-align: center;
@@ -1973,15 +1960,13 @@ namespace NeonWiki
             margin: 0 auto;
         }}
 
-        /* Controles de Zoom */
+        /* Controles de Zoom - Flotantes que siguen al diagrama en la pantalla */
         .mermaid-zoom-controls {{
-            position: absolute !important;
-            top: 10px !important;
-            right: 10px !important;
+            position: fixed !important;
             display: flex !important;
             align-items: center;
             gap: 5px;
-            z-index: 1000 !important;
+            z-index: 10000 !important;
             background-color: rgba(0, 10, 10, 0.95) !important;
             padding: 8px 12px !important;
             border-radius: 5px;
@@ -1989,6 +1974,23 @@ namespace NeonWiki
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.8) !important;
             visibility: visible !important;
             opacity: 1 !important;
+            width: fit-content !important;
+            pointer-events: auto !important;
+        }}
+        
+        /* Asegurar que el contenedor permita sticky */
+        .mermaid-container {{
+            position: relative;
+            margin: 20px 0;
+            background-color: #000a0a;
+            border: 1px solid #00ffff;
+            border-radius: 5px;
+            padding: 20px;
+            padding-top: 50px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            overflow: auto;
+            min-height: 100px;
+            max-height: 90vh;
         }}
 
         .mermaid-zoom-btn {{
@@ -2237,6 +2239,12 @@ namespace NeonWiki
                     const newContainer = document.createElement('div');
                     newContainer.className = 'mermaid-container';
                     newContainer.id = containerId;
+                    newContainer.style.display = 'flex';
+                    newContainer.style.flexDirection = 'column';
+                    
+                    // Establecer orden para que los controles estén primero
+                    zoomControls.style.order = '1';
+                    diagram.style.order = '2';
                     
                     // Envolver el diagrama
                     if (diagram.parentNode) {{
@@ -2256,6 +2264,68 @@ namespace NeonWiki
             // Debug: verificar que los controles existan
             const controls = document.querySelectorAll('.mermaid-zoom-controls');
             console.log('Controles de zoom encontrados:', controls.length);
+            
+            // Configurar listeners de scroll para mover controles con el diagrama
+            setupScrollListeners();
+        }}
+        
+        // Función para actualizar posición de controles para que sigan al diagrama en la pantalla
+        function updateZoomControlsPosition() {{
+            document.querySelectorAll('.mermaid-container').forEach(function(container) {{
+                const controls = container.querySelector('.mermaid-zoom-controls');
+                if (!controls) return;
+                
+                // Obtener posición del contenedor en el viewport
+                const containerRect = container.getBoundingClientRect();
+                
+                // Verificar si el contenedor está visible en el viewport
+                const isVisible = containerRect.top < window.innerHeight && 
+                                  containerRect.bottom > 0 &&
+                                  containerRect.left < window.innerWidth && 
+                                  containerRect.right > 0;
+                
+                if (isVisible) {{
+                    // Calcular posición fija en la pantalla basada en la posición del contenedor
+                    // Los controles estarán siempre en la esquina superior derecha del contenedor visible
+                    const topPosition = containerRect.top + 10; // 10px desde el borde superior del contenedor
+                    const rightPosition = window.innerWidth - containerRect.right + 10; // 10px desde el borde derecho del contenedor
+                    
+                    // Actualizar posición fija en la pantalla
+                    controls.style.top = topPosition + 'px';
+                    controls.style.right = rightPosition + 'px';
+                    controls.style.display = 'flex';
+                }} else {{
+                    // Ocultar controles si el contenedor no está visible
+                    controls.style.display = 'none';
+                }}
+            }});
+        }}
+        
+        // Configurar listeners de scroll para mantener controles visibles
+        function setupScrollListeners() {{
+            // Listener para scroll de la ventana (scroll de la página)
+            let windowScrollTimeout;
+            window.addEventListener('scroll', function() {{
+                clearTimeout(windowScrollTimeout);
+                windowScrollTimeout = setTimeout(updateZoomControlsPosition, 10);
+            }}, {{ passive: true }});
+            
+            // Listener para scroll de cada contenedor (scroll dentro del diagrama)
+            document.querySelectorAll('.mermaid-container').forEach(function(container) {{
+                let containerScrollTimeout;
+                container.addEventListener('scroll', function() {{
+                    clearTimeout(containerScrollTimeout);
+                    containerScrollTimeout = setTimeout(updateZoomControlsPosition, 10);
+                }}, {{ passive: true }});
+            }});
+            
+            // Listener para redimensionamiento de ventana
+            window.addEventListener('resize', function() {{
+                updateZoomControlsPosition();
+            }});
+            
+            // Actualizar posición inicial
+            updateZoomControlsPosition();
         }}
 
         // Process Mermaid blocks and syntax highlighting when page loads
@@ -2290,7 +2360,14 @@ namespace NeonWiki
                 console.log('Window load event');
                 setTimeout(function() {{
                     addZoomControlsToMermaidDiagrams();
+                    // Reconfigurar listeners después de agregar controles
+                    setupScrollListeners();
                 }}, 1000);
+            }});
+            
+            // Reconfigurar listeners cuando se redimensiona la ventana
+            window.addEventListener('resize', function() {{
+                updateZoomControlsPosition();
             }});
             
             // Aplicar syntax highlighting con Prism.js
