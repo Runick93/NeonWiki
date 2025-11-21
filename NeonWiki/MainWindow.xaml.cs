@@ -1491,23 +1491,60 @@ namespace NeonWiki
         private string ProcessMermaidBlocks(string htmlContent)
         {
             // Buscar bloques de código con clase language-mermaid y convertirlos en divs de Mermaid
-            var pattern = @"<pre><code class=""language-mermaid"">(.*?)</code></pre>";
-            var regex = new Regex(pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            // Intentar diferentes patrones posibles
+            var patterns = new[]
+            {
+                @"<pre><code class=""language-mermaid"">(.*?)</code></pre>",
+                @"<pre><code class='language-mermaid'>(.*?)</code></pre>",
+                @"<pre><code class=language-mermaid>(.*?)</code></pre>",
+                @"<pre><code class=""mermaid"">(.*?)</code></pre>",
+                @"<pre><code class='mermaid'>(.*?)</code></pre>"
+            };
             
             int index = 0;
-            return regex.Replace(htmlContent, match =>
+            string result = htmlContent;
+            
+            foreach (var pattern in patterns)
             {
-                var mermaidCode = match.Groups[1].Value;
-                // Escapar HTML entities
-                mermaidCode = mermaidCode
-                    .Replace("&lt;", "<")
-                    .Replace("&gt;", ">")
-                    .Replace("&amp;", "&")
-                    .Replace("&quot;", "\"");
+                var regex = new Regex(pattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                result = regex.Replace(result, match =>
+                {
+                    var mermaidCode = match.Groups[1].Value;
+                    // Escapar HTML entities
+                    mermaidCode = mermaidCode
+                        .Replace("&lt;", "<")
+                        .Replace("&gt;", ">")
+                        .Replace("&amp;", "&")
+                        .Replace("&quot;", "\"")
+                        .Replace("&#39;", "'");
+                    
+                    var currentIndex = index++;
+                    var divId = $"mermaid-{currentIndex}";
+                    var containerId = $"mermaid-container-{currentIndex}";
+                    return $"<div class=\"mermaid-container\" id=\"{containerId}\"><div class=\"mermaid-zoom-controls\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\">{mermaidCode}</div></div>";
+                });
+            }
+            
+            // También buscar divs con clase mermaid que ya existan y envolverlos
+            var existingMermaidPattern = @"<div class=""mermaid""(?:[^>]*)>(.*?)</div>";
+            var existingRegex = new Regex(existingMermaidPattern, RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            result = existingRegex.Replace(result, match =>
+            {
+                // Verificar si ya está dentro de un contenedor
+                var fullMatch = match.Value;
+                if (fullMatch.Contains("mermaid-container") || fullMatch.Contains("mermaid-zoom-controls"))
+                {
+                    return fullMatch; // Ya tiene controles, no modificar
+                }
                 
-                var divId = $"mermaid-{index++}";
-                return $"<div class=\"mermaid\" id=\"{divId}\">{mermaidCode}</div>";
+                var mermaidCode = match.Groups[1].Value;
+                var currentIndex = index++;
+                var divId = $"mermaid-{currentIndex}";
+                var containerId = $"mermaid-container-{currentIndex}";
+                return $"<div class=\"mermaid-container\" id=\"{containerId}\"><div class=\"mermaid-zoom-controls\"><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 1.2)\" title=\"Acercar\">+</button><button class=\"mermaid-zoom-btn\" onclick=\"window.zoomMermaid('{divId}', 0.8)\" title=\"Alejar\">−</button><button class=\"mermaid-zoom-btn\" onclick=\"window.resetMermaidZoom('{divId}')\" title=\"Restablecer\">⌂</button><span class=\"mermaid-zoom-level\" id=\"zoom-{divId}\">100%</span></div><div class=\"mermaid\" id=\"{divId}\">{mermaidCode}</div></div>";
             });
+            
+            return result;
         }
 
         private string GetNeonHtmlTemplate(string content)
@@ -1910,19 +1947,83 @@ namespace NeonWiki
         }}
 
         /* Mermaid Diagram Styles */
-        .mermaid {{
+        .mermaid-container {{
+            position: relative;
+            margin: 20px 0;
             background-color: #000a0a;
             border: 1px solid #00ffff;
             border-radius: 5px;
             padding: 20px;
-            margin: 20px 0;
+            padding-top: 50px;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            overflow: auto;
+            min-height: 100px;
+        }}
+
+        .mermaid {{
             text-align: center;
+            transition: transform 0.3s ease;
+            transform-origin: top center;
         }}
 
         .mermaid svg {{
             max-width: 100%;
             height: auto;
+            display: block;
+            margin: 0 auto;
+        }}
+
+        /* Controles de Zoom */
+        .mermaid-zoom-controls {{
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            display: flex !important;
+            align-items: center;
+            gap: 5px;
+            z-index: 1000 !important;
+            background-color: rgba(0, 10, 10, 0.95) !important;
+            padding: 8px 12px !important;
+            border-radius: 5px;
+            border: 2px solid #00ffff !important;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8) !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }}
+
+        .mermaid-zoom-btn {{
+            background-color: #001a1a;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 30px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+        }}
+
+        .mermaid-zoom-btn:hover {{
+            background-color: #003333;
+            color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            transform: scale(1.1);
+        }}
+
+        .mermaid-zoom-btn:active {{
+            transform: scale(0.95);
+        }}
+
+        .mermaid-zoom-level {{
+            color: #00ffff;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+            min-width: 45px;
+            text-align: center;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
         }}
 
         /* Estilos para búsqueda */
@@ -2020,13 +2121,179 @@ namespace NeonWiki
             }}
         }});
 
+        // Funciones para controlar el zoom de los diagramas Mermaid
+        window.mermaidZoomLevels = window.mermaidZoomLevels || {{}};
+
+        window.zoomMermaid = function(diagramId, factor) {{
+            const diagram = document.getElementById(diagramId);
+            if (!diagram) return;
+
+            // Inicializar nivel de zoom si no existe
+            if (!window.mermaidZoomLevels[diagramId]) {{
+                window.mermaidZoomLevels[diagramId] = 1.0;
+            }}
+
+            // Aplicar zoom
+            window.mermaidZoomLevels[diagramId] *= factor;
+            
+            // Limitar zoom entre 0.25x y 4x
+            if (window.mermaidZoomLevels[diagramId] < 0.25) {{
+                window.mermaidZoomLevels[diagramId] = 0.25;
+            }} else if (window.mermaidZoomLevels[diagramId] > 4.0) {{
+                window.mermaidZoomLevels[diagramId] = 4.0;
+            }}
+
+            // Aplicar transformación al contenedor del diagrama
+            diagram.style.transform = `scale(${{window.mermaidZoomLevels[diagramId]}})`;
+            diagram.style.transformOrigin = 'top center';
+
+            // Actualizar indicador de zoom
+            const zoomIndicator = document.getElementById(`zoom-${{diagramId}}`);
+            if (zoomIndicator) {{
+                zoomIndicator.textContent = Math.round(window.mermaidZoomLevels[diagramId] * 100) + '%';
+            }}
+        }};
+
+        window.resetMermaidZoom = function(diagramId) {{
+            const diagram = document.getElementById(diagramId);
+            if (!diagram) return;
+
+            window.mermaidZoomLevels[diagramId] = 1.0;
+            diagram.style.transform = 'scale(1.0)';
+            diagram.style.transformOrigin = 'top center';
+
+            // Actualizar indicador de zoom
+            const zoomIndicator = document.getElementById(`zoom-${{diagramId}}`);
+            if (zoomIndicator) {{
+                zoomIndicator.textContent = '100%';
+            }}
+        }}
+
+        // Función para agregar controles a los diagramas Mermaid
+        function addZoomControlsToMermaidDiagrams() {{
+            console.log('Buscando diagramas Mermaid...');
+            const diagrams = document.querySelectorAll('.mermaid');
+            console.log('Diagramas encontrados:', diagrams.length);
+            
+            diagrams.forEach(function(diagram) {{
+                let diagramId = diagram.id;
+                
+                // Si no tiene ID, crear uno
+                if (!diagramId) {{
+                    diagramId = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+                    diagram.id = diagramId;
+                }}
+                
+                // Verificar si ya está dentro de un contenedor con controles
+                const container = diagram.closest('.mermaid-container');
+                if (!container) {{
+                    console.log('Agregando controles al diagrama:', diagramId);
+                    
+                    // Crear contenedor y controles si no existen
+                    const containerId = 'mermaid-container-' + diagramId;
+                    const zoomControls = document.createElement('div');
+                    zoomControls.className = 'mermaid-zoom-controls';
+                    
+                    const btnPlus = document.createElement('button');
+                    btnPlus.className = 'mermaid-zoom-btn';
+                    btnPlus.textContent = '+';
+                    btnPlus.title = 'Acercar';
+                    btnPlus.onclick = function() {{ 
+                        if (window.zoomMermaid) {{
+                            window.zoomMermaid(diagramId, 1.2);
+                        }}
+                    }};
+                    
+                    const btnMinus = document.createElement('button');
+                    btnMinus.className = 'mermaid-zoom-btn';
+                    btnMinus.textContent = '−';
+                    btnMinus.title = 'Alejar';
+                    btnMinus.onclick = function() {{ 
+                        if (window.zoomMermaid) {{
+                            window.zoomMermaid(diagramId, 0.8);
+                        }}
+                    }};
+                    
+                    const btnReset = document.createElement('button');
+                    btnReset.className = 'mermaid-zoom-btn';
+                    btnReset.textContent = '⌂';
+                    btnReset.title = 'Restablecer';
+                    btnReset.onclick = function() {{ 
+                        if (window.resetMermaidZoom) {{
+                            window.resetMermaidZoom(diagramId);
+                        }}
+                    }};
+                    
+                    const span = document.createElement('span');
+                    span.className = 'mermaid-zoom-level';
+                    span.id = 'zoom-' + diagramId;
+                    span.textContent = '100%';
+                    
+                    zoomControls.appendChild(btnPlus);
+                    zoomControls.appendChild(btnMinus);
+                    zoomControls.appendChild(btnReset);
+                    zoomControls.appendChild(span);
+                    
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'mermaid-container';
+                    newContainer.id = containerId;
+                    
+                    // Envolver el diagrama
+                    if (diagram.parentNode) {{
+                        diagram.parentNode.insertBefore(newContainer, diagram);
+                        newContainer.appendChild(zoomControls);
+                        newContainer.appendChild(diagram);
+                    }}
+                }}
+                
+                // Inicializar nivel de zoom
+                if (!window.mermaidZoomLevels) {{
+                    window.mermaidZoomLevels = {{}};
+                }}
+                window.mermaidZoomLevels[diagramId] = 1.0;
+            }});
+            
+            // Debug: verificar que los controles existan
+            const controls = document.querySelectorAll('.mermaid-zoom-controls');
+            console.log('Controles de zoom encontrados:', controls.length);
+        }}
+
         // Process Mermaid blocks and syntax highlighting when page loads
         document.addEventListener('DOMContentLoaded', function() {{
-            // Render all Mermaid diagrams (already converted to divs by server-side processing)
-            mermaid.run();
+            console.log('DOMContentLoaded - Iniciando renderizado Mermaid');
+            
+            // Intentar renderizar Mermaid
+            if (typeof mermaid !== 'undefined') {{
+                mermaid.run().then(() => {{
+                    console.log('Mermaid.run() completado');
+                    // Esperar un poco para que Mermaid termine de procesar el DOM
+                    setTimeout(function() {{
+                        addZoomControlsToMermaidDiagrams();
+                    }}, 500);
+                }}).catch(function(err) {{
+                    console.error('Error al renderizar Mermaid:', err);
+                    // Intentar de todas formas agregar controles
+                    setTimeout(function() {{
+                        addZoomControlsToMermaidDiagrams();
+                    }}, 1000);
+                }});
+            }} else {{
+                console.warn('Mermaid no está disponible');
+                // Intentar de todas formas después de un tiempo
+                setTimeout(function() {{
+                    addZoomControlsToMermaidDiagrams();
+                }}, 2000);
+            }}
+            
+            // También intentar después de que la página esté completamente cargada
+            window.addEventListener('load', function() {{
+                console.log('Window load event');
+                setTimeout(function() {{
+                    addZoomControlsToMermaidDiagrams();
+                }}, 1000);
+            }});
             
             // Aplicar syntax highlighting con Prism.js
-            // Prism autoloader cargará los lenguajes automáticamente
             if (typeof Prism !== 'undefined') {{
                 Prism.highlightAll();
             }}
